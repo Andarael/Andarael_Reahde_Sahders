@@ -53,19 +53,44 @@
 //	Also tried to refactor the samples so more work can be done while they are being sampled, but it's not so easy and the gains
 //	I'm seeing are so small they might be statistical noise. So it MIGHT be faster - no promises.
 
+// Modified by Andarael
+//	Added a depth factor to the sharpening to reduce the effect on distant objects
+//	Added a toggle to display the depth factor for debugging purposes
+//	Added a toggle to enable or disable depth filtering if depth-based adjustments are not required
+
 uniform float Contrast <
 	ui_type = "drag";
 	ui_label = "Contrast Adaptation";
 	ui_tooltip = "Adjusts the range the shader adapts to high contrast (0 is not all the way off).  Higher values = more high contrast sharpening.";
 	ui_min = 0.0; ui_max = 1.0;
-> = 0.0;
+> = 1.0;
 
 uniform float Sharpening <
 	ui_type = "drag";
 	ui_label = "Sharpening intensity";
 	ui_tooltip = "Adjusts sharpening intensity by averaging the original pixels to the sharpened result.  1.0 is the unmodified default.";
 	ui_min = 0.0; ui_max = 1.0;
-> = 1.0;
+> = 0.7;
+
+uniform float DepthControl <
+    ui_type = "drag";
+    ui_label = "Depth Control";
+    ui_tooltip = "Controls sharpening intensity based on depth. Higher values increase the effect on distant objects.";
+    ui_min = 0.0; ui_max = 1.0;
+> = 0.7;
+
+uniform bool EnableDepthFiltering <
+    ui_type = "checkbox";
+    ui_label = "Enable Depth Filtering";
+    ui_tooltip = "Toggles depth-based sharpening. Disable to improve performance if depth-based adjustments are not required.";
+> = true;
+
+uniform bool DisplayDepthFactor <
+	ui_type = "checkbox";
+	ui_label = "Display Depth Factor";
+	ui_tooltip = "Toggles the display of the depth factor. This is useful for debugging and understanding how the depth-based sharpening is affecting the image.";
+> = false;
+
 
 #include "ReShade.fxh"
 #define pixel float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)
@@ -152,14 +177,32 @@ float3 CASPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Targe
 	//						  0 w 0  
 	float3 window = (b + d) + (f + h);
 	float3 outColor = saturate((window * wRGB + e) * rcpWeightRGB);
-	
-	return lerp(e, outColor, Sharpening);
+
+    // Initialize depthFactor to 1.0 for default behavior (no depth-based adjustment)
+    float depthFactor = 1.0;
+
+    // Only fetch and use depth if depth filtering is enabled
+    if (EnableDepthFiltering)
+    {
+		float depth = ReShade::GetLinearizedDepth(texcoord);
+        depthFactor = lerp(1.0, 1.0 - depth * DepthControl, depth);
+		depthFactor = saturate(depthFactor);
+	}
+
+	if (DisplayDepthFactor)
+	{
+		return float3(depthFactor, depthFactor, depthFactor);
+	}
+
+	// Adjust the final output color by the depth factor and sharpening
+	return lerp(e, outColor, Sharpening * depthFactor);
 }
 
 technique ContrastAdaptiveSharpen
 	<
-	ui_label = "AMD FidelityFX Contrast Adaptive Sharpening";
+	ui_label = "CAS + Depth AMD FidelityFX";
 	ui_tooltip = 
+    "This version of CAS has a depth control variable that allows you to adjust the sharpening intensity based on depth.\n"
 	"CAS is a low overhead adaptive sharpening algorithm that AMD includes with their drivers.\n"
 	"This port to Reshade works with all cards from all vendors,\n"
 	"but cannot do the optional scaling that CAS is normally also capable of when activated in the AMD drivers.\n"
