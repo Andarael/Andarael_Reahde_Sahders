@@ -182,7 +182,7 @@ float3 CASPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Targe
     float depthFactor = 1.0;
 
     // Only fetch and use depth if depth filtering is enabled
-    if (EnableDepthFiltering)
+    if (EnableDepthFiltering && DepthControl > 0.0)
     {
 		float depth = ReShade::GetLinearizedDepth(texcoord);
         depthFactor = lerp(1.0, 1.0 - depth * DepthControl, depth);
