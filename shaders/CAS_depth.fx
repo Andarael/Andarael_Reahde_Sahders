@@ -76,7 +76,7 @@ uniform float DepthControl <
     ui_type = "drag";
     ui_label = "Depth Control";
     ui_tooltip = "Controls sharpening intensity based on depth. Higher values decrease the effect on distant objects.";
-    ui_min = 0.0; ui_max = 1.0;
+    ui_min = 0.0; ui_max = 2.0;
 > = 0.7;
 
 uniform bool EnableDepthFiltering <
