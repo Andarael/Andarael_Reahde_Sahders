@@ -79,6 +79,13 @@ uniform float DepthControl <
     ui_min = 0.0; ui_max = 2.0;
 > = 0.7;
 
+uniform float DepthLinearity <
+	ui_type = "drag";
+	ui_label = "Depth Linearity";
+	ui_tooltip = "Controls the linearity of the depth factor. Higher values make the depth factor more linear.";
+	ui_min = 0.1; ui_max = 3.0;
+> = 2.0;
+
 uniform bool EnableDepthFiltering <
     ui_type = "checkbox";
     ui_label = "Enable Depth Filtering";
@@ -185,6 +192,7 @@ float3 CASPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Targe
     if (EnableDepthFiltering && DepthControl > 0.0)
     {
 		float depth = ReShade::GetLinearizedDepth(texcoord);
+		depth = pow(depth, DepthLinearity);
         depthFactor = lerp(1.0, 1.0 - depth * DepthControl, depth);
 		depthFactor = saturate(depthFactor);
 	}
